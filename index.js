@@ -17,7 +17,8 @@ app.use('/uploads', express.static(path.join(__dirname, '/uploads')))
 
 app.use(cors({
     credentials: true,
-    origin: ['http://localhost:3000']
+    // origin: ['http://localhost:3000']
+    origin: ['https://mern-stack-blog-project.vercel.app/']
 }))
 
 mongoose.connect(process.env.MONGO_URL, {
