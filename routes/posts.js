@@ -1,17 +1,34 @@
 const router = require('express').Router()
-const User = require('../models/User')
+const checkLogin = require('../middlewares/checkLogin');
+//const User = require('../models/User')
 const Post = require('../models/Post')
+const cloudinary = require('cloudinary').v2;
+
+cloudinary.config({ 
+    cloud_name: 'datahostbd', 
+    api_key: '121831422939177', 
+    api_secret: 'C2U2pgJ8_a7mOzk6y2vyN_Fid9w',
+  });
 
 //Create Post
-router.post('/', async (req, res, next) => {
-    const newPost = new Post(req.body);
-    try{
-        const savedPost = await newPost.save();
-        res.status(200).json(savedPost);
-    }
-    catch(err){
-        res.status(500).json(err);
-    }
+router.post('/', checkLogin,  (req, res, next) => {
+    const file = req.files.file;
+    cloudinary.uploader.upload(file.tempFilePath, async (err, result) =>{
+        const newPost = new Post({
+            title: req.body.title,
+            desc: req.body.desc,
+            photo: result.url,
+            username: req.body.username,
+        });
+        try{
+            const savedPost = await newPost.save();
+            res.status(200).json(savedPost);
+        }
+        catch(err){
+            res.status(500).json(err);
+        }
+    })
+
 })
 
 //Update Post
@@ -20,19 +37,50 @@ router.put('/:id', async (req, res, next) => {
         const post = await Post.findById(req.params.id);
         if(post.username === req.body.username)
         {
-            try{
-                const updatedPost = await Post.findByIdAndUpdate(
-                    req.params.id,
-                    {
-                        $set: req.body,
-                    },
-                    { new: true }
-                )
-                res.status(200).json(updatedPost)
+            if(req.body.name == null)
+            {
+                console.log('hemel')
+                try{
+                    const updatedPost = await Post.findByIdAndUpdate(
+                        req.params.id,
+                        {
+                            $set: req.body,
+                        },
+                        { new: true }
+                    )
+                    res.status(200).json(updatedPost)
+                }
+                catch(err){
+                    res.status(500).json(err);
+                }
             }
-            catch(err){
-                res.status(500).json(err);
+            else{
+                const file = req.files.file;
+                cloudinary.uploader.upload(file.tempFilePath, async (err, result) =>{
+                    const body = {
+                        title: req.body.title,
+                        desc: req.body.desc,
+                        photo: result.url,
+                        username: req.body.username,
+                    }
+                    try{
+                        const updatedPost = await Post.findByIdAndUpdate(
+                            req.params.id,
+                            {
+                                $set: body,
+                            },
+                            { new: true }
+                        )
+                        res.status(200).json(updatedPost)
+                    }
+                    catch(err){
+                        res.status(500).json(err);
+                    }
+                })
             }
+            
+            
+            
         }
         else{
             res.status(401).json("You can update only your post")
@@ -80,7 +128,7 @@ router.get('/:id', async (req, res) =>{
 })
 
 //Get All Posts
-router.get('/', async (req, res) =>{
+router.get('/', checkLogin, async (req, res) =>{
     const username = req.query.user;
     const catName = req.query.cat;
     try{
